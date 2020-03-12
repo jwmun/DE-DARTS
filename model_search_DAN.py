@@ -21,10 +21,8 @@ class MixedOp(nn.Module):
 
     def forward(self, x, weights, attention_weight):
         attention = self.attention(x)
-        # ED
         weights = attention_weight*attention + weights
-        # EMA
-        #weights = attention_weight*attention + (1-attention_weight)*weights
+        #weights = weights/(1+attention_weight)
         out = 0
         for i, op in enumerate(self._ops):
             weight = weights[:, i].view(weights.size(0), 1, 1, 1)

@@ -24,9 +24,8 @@ import torch.backends.cudnn as cudnn
 from torch.autograd import Variable
 from model import NetworkImageNet as Network
 
-
 parser = argparse.ArgumentParser("imagenet")
-parser.add_argument('--data', type=str, default='/mnt/nas/shared/data/imagenet/', help='location of the data corpus')
+parser.add_argument('--data', type=str, default='./imagenet', help='location of the data corpus')
 parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
 parser.add_argument('--epochs', type=int, default=250, help='num of training epochs')
@@ -36,8 +35,7 @@ parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
 parser.add_argument('--weight_decay', type=float, default=3e-5, help='weight decay')
 parser.add_argument('--report_freq', type=float, default=100, help='report frequency')
 parser.add_argument('--gpu', type=int, default=None, help='gpu device id')
-parser.add_argument('--resume', default='', type=str, metavar='PATH',
-                    help='path to latest checkpoint (default: none)')
+parser.add_argument('--gpu_init', type=int, default=0, help='gpu init device id')
 parser.add_argument('-e', '--evaluate', dest='evaluate', action='store_true',
                     help='evaluate model on validation set')
 parser.add_argument('--init_channels', type=int, default=48, help='num of init channels')
@@ -47,7 +45,7 @@ parser.add_argument('--auxiliary_weight', type=float, default=0.4, help='weight 
 parser.add_argument('--drop_path_prob', type=float, default=0, help='drop path probability')
 parser.add_argument('--save', type=str, default='EXP', help='experiment name')
 parser.add_argument('--seed', type=int, default=None, help='random seed')
-parser.add_argument('--arch', type=str, default='Sigmoid_dynamic', help='which architecture to use')
+parser.add_argument('--arch', type=str, default='D_DARTS', help='which architecture to use')
 parser.add_argument('--grad_clip', type=float, default=5., help='gradient clipping')
 parser.add_argument('--label_smooth', type=float, default=0.1, help='label smoothing')
 parser.add_argument('--gamma', type=float, default=0.97, help='learning rate decay')
@@ -63,15 +61,15 @@ parser.add_argument('--multiprocessing-distributed', action='store_true',
                          'N processes per node, which has N GPUs. This is the '
                          'fastest way to use PyTorch for either single node or '
                          'multi node data parallel training')
-
+parser.add_argument('--resume', default=None, help='path to latest checkpoint')
+parser.add_argument('--start_epoch', default=0, help='start epoch')
 
 
 CLASSES = 1000
+
 best_acc_top1 = 0
 
-
 class CrossEntropyLabelSmooth(nn.Module):
-
   def __init__(self, num_classes, epsilon):
     super(CrossEntropyLabelSmooth, self).__init__()
     self.num_classes = num_classes
@@ -110,7 +108,7 @@ def main():
 
   args.distributed = args.world_size > 1 or args.multiprocessing_distributed
 
-  ngpus_per_node = torch.cuda.device_count()
+  ngpus_per_node = 2
   if args.multiprocessing_distributed:
     # Since we have ngpus_per_node processes per node, the total world_size
     # needs to be adjusted accordingly
@@ -125,7 +123,7 @@ def main():
 
 def main_worker(gpu, ngpus_per_node, args):
   global best_acc_top1
-  args.gpu = gpu
+  args.gpu = gpu + args.gpu_init
   args.ngpus_per_node = ngpus_per_node
 
   if args.gpu is not None:
@@ -146,8 +144,7 @@ def main_worker(gpu, ngpus_per_node, args):
   model = Network(args.init_channels, CLASSES, args.layers, args.auxiliary, genotype)
 
   # train log (log.txt)
-  if not args.multiprocessing_distributed or \
-          (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
+  if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
     log_format = '%(asctime)s %(message)s'
     logging.basicConfig(stream=sys.stdout, level=logging.INFO,
                         format=log_format, datefmt='%m/%d %I:%M:%S %p')
@@ -191,11 +188,34 @@ def main_worker(gpu, ngpus_per_node, args):
     weight_decay=args.weight_decay
     )
 
+
+
+  if args.resume:
+    if os.path.isfile(args.resume):
+      print("=> loading checkpoint '{}'".format(args.resume))
+      if args.gpu is None:
+        checkpoint = torch.load(args.resume)
+      else:
+        # Map model to be loaded to specified single gpu.
+        loc = 'cuda:{}'.format(args.gpu)
+        checkpoint = torch.load(args.resume, map_location=loc)
+      args.start_epoch = checkpoint['epoch']
+      best_acc_top1 = checkpoint['best_acc_top1']
+      if args.gpu is not None:
+        # best_acc1 may be from a checkpoint from a different GPU
+        best_acc_top1 = best_acc_top1.to(args.gpu)
+      model.load_state_dict(checkpoint['state_dict'])
+      optimizer.load_state_dict(checkpoint['optimizer'])
+      print("=> loaded checkpoint '{}' (epoch {})"
+            .format(args.resume, checkpoint['epoch']))
+    else:
+      print("=> no checkpoint found at '{}'".format(args.resume))
+
   cudnn.benchmark = True
 
   # Data loader
-  traindir = os.path.join(args.data, 'img_train')
-  validdir = os.path.join(args.data, 'img_val')
+  traindir = os.path.join(args.data, 'train')
+  validdir = os.path.join(args.data, 'val')
   normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
   train_data = dset.ImageFolder(
     traindir,
@@ -233,22 +253,27 @@ def main_worker(gpu, ngpus_per_node, args):
     num_workers=args.workers)
 
   scheduler = torch.optim.lr_scheduler.StepLR(optimizer, args.decay_period, gamma=args.gamma)
-  for epoch in range(args.epochs):
+  for epoch in range(args.start_epoch):
+      scheduler.step()
+
+  for epoch in range(args.start_epoch,args.epochs):
     if args.distributed:
       train_sampler.set_epoch(epoch)
 
+    if epoch == args.start_epoch and args.resume:
+        print('epoch %d lr %e'%(epoch, scheduler.get_lr()[0]))
+
+    if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
+      logging.info('epoch %d lr %e', epoch, scheduler.get_lr()[0])
+    scheduler.step()
     model.drop_path_prob = args.drop_path_prob * epoch / args.epochs
 
     train_acc, train_obj = train(train_queue, model, criterion_smooth, optimizer, args)
-
     valid_acc_top1, valid_acc_top5, valid_obj = infer(valid_queue, model, criterion, args)
-
     is_best = valid_acc_top1 > best_acc_top1
     best_acc_top1 = max(valid_acc_top1, best_acc_top1)
 
-    if not args.multiprocessing_distributed or\
-            (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
-      logging.info('epoch %d lr %e', epoch, scheduler.get_lr()[0])
+    if not args.multiprocessing_distributed or (args.multiprocessing_distributed and args.rank % ngpus_per_node == 0):
       logging.info('train_acc %f', train_acc)
       logging.info('valid_acc_top1 %f', valid_acc_top1)
       logging.info('valid_acc_top5 %f', valid_acc_top5)
@@ -259,7 +284,7 @@ def main_worker(gpu, ngpus_per_node, args):
         'best_acc_top1': best_acc_top1,
         'optimizer' : optimizer.state_dict(),
       }, is_best, args.save)
-    scheduler.step()
+
 
 
 
@@ -272,8 +297,7 @@ def train(train_queue, model, criterion, optimizer, args):
   for step, (input, target) in enumerate(train_queue):
     if args.gpu is not None:
       input = input.cuda(args.gpu, non_blocking=True)
-      target = target.cuda(args.gpu, non_blocking=True)
-
+    target = target.cuda(args.gpu, non_blocking=True)
     optimizer.zero_grad()
     logits, logits_aux = model(input)
     loss = criterion(logits, target)
@@ -324,4 +348,5 @@ def infer(valid_queue, model, criterion, args):
 
 
 if __name__ == '__main__':
-  main() 
+  main()
+
