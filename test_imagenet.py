@@ -19,7 +19,7 @@ from model import NetworkImageNet as Network
 
 
 parser = argparse.ArgumentParser("imagenet")
-parser.add_argument('--data', type=str, default='../data/imagenet/', help='location of the data corpus')
+parser.add_argument('--data', type=str, default='./imagenet/', help='location of the data corpus')
 parser.add_argument('--batch_size', type=int, default=128, help='batch size')
 parser.add_argument('--report_freq', type=float, default=100, help='report frequency')
 parser.add_argument('--gpu', type=int, default=0, help='gpu device id')
@@ -29,7 +29,7 @@ parser.add_argument('--model_path', type=str, default='EXP/model.pt', help='path
 parser.add_argument('--auxiliary', action='store_true', default=False, help='use auxiliary tower')
 parser.add_argument('--drop_path_prob', type=float, default=0, help='drop path probability')
 parser.add_argument('--seed', type=int, default=0, help='random seed')
-parser.add_argument('--arch', type=str, default='DARTS', help='which architecture to use')
+parser.add_argument('--arch', type=str, default='D_DARTS', help='which architecture to use')
 args = parser.parse_args()
 
 log_format = '%(asctime)s %(message)s'
