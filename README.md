@@ -13,7 +13,7 @@ python train_search_noise.py --unrolled # noise(2nd order)
 
 **CIFAR-100**
 
-To carry out architecture search on CIFAR-10, run
+To carry out architecture search on CIFAR-100, run
 ```
 python train_search_DAN.py --unrolled --cifar100    # D-DARTS(2nd order)
 python train_search_noise.py --unrolled --cifar100  # noise(2nd order)
@@ -29,7 +29,7 @@ python train.py --auxiliary --cutout
 ```
 **CIFAR-100**
 
-To carry out architecture train on CIFAR-10, run
+To carry out architecture train on CIFAR-100, run
 ```
 python train.py --auxiliary --cutout --cifar100
 ```
