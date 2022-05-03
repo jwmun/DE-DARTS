@@ -1,4 +1,4 @@
-# D-DARTS: Dynamic Differentiable Architecture Search
+# DE-DARTS: Dynamic Differentiable Architecture Search
 This code is based on the official implementation of [DARTS](https://github.com/quark0/darts).
 
 
