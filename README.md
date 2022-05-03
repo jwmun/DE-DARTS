@@ -41,3 +41,21 @@ You need to manually download ImageNet on "imagenet" directory (follow the instr
 ```
 python train_imagenet.py --auxiliary --multiprocessing-distributed  
 ```
+
+## Citing
+@inproceedings{,
+  title={DE-DARTS: Neural architecture search with dynamic exploration},
+  author={Mun, Jiwoo and Ha, Seokhyeon and Lee, Jungwoo},
+  booktitle={},
+  pages={},
+  year={},
+  organization={}
+}
+
+## Acknowledgments
+
+This work is in part supported by National Research Foundation of Korea (NRF, 2021R1A4A1030898(3)), Institute of Information & communications Technology Planning & Evaluation (IITP, 2021-0-00106(4)) grant funded by the Ministry of Science and ICT (MSIT), Bio-Mimetic Robot Research Center Funded by Defense Acquisition Program Administration, Agency for Defense Development (UD190018ID, 3), INMAC, and BK21-plus .
+
+## License
+
+MIT License
