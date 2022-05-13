@@ -43,13 +43,12 @@ python train_imagenet.py --auxiliary --multiprocessing-distributed
 ```
 
 ## Citing
-@inproceedings{,
+@article{mun2022darts,
   title={DE-DARTS: Neural architecture search with dynamic exploration},
   author={Mun, Jiwoo and Ha, Seokhyeon and Lee, Jungwoo},
-  booktitle={},
-  pages={},
-  year={},
-  organization={}
+  journal={ICT Express},
+  year={2022},
+  publisher={Elsevier}
 }
 
 ## Acknowledgments
