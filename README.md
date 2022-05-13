@@ -43,6 +43,7 @@ python train_imagenet.py --auxiliary --multiprocessing-distributed
 ```
 
 ## Citing
+```
 @article{mun2022darts,
   title={DE-DARTS: Neural architecture search with dynamic exploration},
   author={Mun, Jiwoo and Ha, Seokhyeon and Lee, Jungwoo},
@@ -50,7 +51,7 @@ python train_imagenet.py --auxiliary --multiprocessing-distributed
   year={2022},
   publisher={Elsevier}
 }
-
+```
 ## Acknowledgments
 
 This work is in part supported by National Research Foundation of Korea (NRF, 2021R1A4A1030898(3)), Institute of Information & communications Technology Planning & Evaluation (IITP, 2021-0-00106(4)) grant funded by the Ministry of Science and ICT (MSIT), Bio-Mimetic Robot Research Center Funded by Defense Acquisition Program Administration, Agency for Defense Development (UD190018ID, 3), INMAC, and BK21-plus .
